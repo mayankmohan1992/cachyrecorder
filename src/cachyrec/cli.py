@@ -1,6 +1,8 @@
 """CachyRecorder CLI."""
 import argparse
+import json
 import sys
+import time
 from datetime import datetime
 
 from . import config, store
@@ -57,10 +59,36 @@ def cmd_set(a):
     elif isinstance(cur, int):
         val = int(val)
     elif isinstance(cur, list):
-        val = [x.strip() for x in val.split(",") if x.strip()]
+        # accept either JSON (["a","b"]) or a bare comma-separated list
+        try:
+            parsed = json.loads(val)
+            val = parsed if isinstance(parsed, list) else [str(parsed)]
+        except (json.JSONDecodeError, ValueError):
+            val = [x.strip() for x in val.split(",") if x.strip()]
     cfg[a.key] = val
     config.save(cfg)
     print(f"{a.key} = {val}")
+
+
+def cmd_purge(a):
+    conn = store.connect()
+    before = store.stats(conn)
+    cutoff = time.time() - a.days * 86400
+    if not a.yes:
+        n = conn.execute("SELECT COUNT(*) c FROM frames WHERE ts < ?",
+                         (cutoff,)).fetchone()["c"]
+        if not n:
+            print(f"nothing older than {a.days} days")
+            return
+        resp = input(f"delete {n} frames older than {a.days} days? [y/N] ")
+        if resp.strip().lower() not in ("y", "yes"):
+            print("aborted")
+            return
+    store.purge_older_than(conn, cutoff)
+    conn.commit()
+    after = store.stats(conn)
+    freed = (before["bytes"] - after["bytes"]) / 1e6
+    print(f"removed {before['total'] - after['total']} frames, freed {freed:.1f} MB")
 
 
 def main():
@@ -80,6 +108,11 @@ def main():
     st.add_argument("key")
     st.add_argument("value")
     st.set_defaults(fn=cmd_set)
+
+    pu = sub.add_parser("purge", help="delete frames older than N days")
+    pu.add_argument("--days", type=int, required=True)
+    pu.add_argument("--yes", action="store_true", help="skip confirmation")
+    pu.set_defaults(fn=cmd_purge)
 
     g = sub.add_parser("gui")
     g.set_defaults(fn=lambda _: __import__("cachyrec.viewer", fromlist=["main"]).main())

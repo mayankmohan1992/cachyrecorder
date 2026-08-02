@@ -1,0 +1,51 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        CachyRecorder is developed and tested on KDE Plasma 6 / Wayland.
+        Reports from other desktops are welcome, but see the README
+        "Porting" section first — capture and window titles are KDE-specific.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Output of `cachyrec status` and the commands below.
+      value: |
+        <!-- paste output of: -->
+        <!-- cachyrec status -->
+        <!-- echo "$XDG_CURRENT_DESKTOP / $XDG_SESSION_TYPE" -->
+        <!-- python3 -V; pacman -Q spectacle tesseract python-pyqt6 -->
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        journalctl --user -u cachyrecorder.service -n 50 --no-pager
+        journalctl --user -u cachyrecorder-tray.service -n 50 --no-pager
+      render: shell
