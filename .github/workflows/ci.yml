@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install lint tooling
+        run: pip install ruff
+
+      - name: Byte-compile
+        run: python -m compileall -q src/cachyrec
+
+      - name: Ruff
+        run: ruff check src/cachyrec --output-format=github
+
+      - name: Shellcheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y shellcheck
+          shellcheck scripts/*.sh
+
+# NOTE: runtime behaviour (capture, OCR, tray registration) cannot be tested in
+# CI — it needs a live KDE Plasma Wayland session. Those checks live in
+# scripts/verify.sh and run on the maintainer's machine before merge.

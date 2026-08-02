@@ -1,0 +1,16 @@
+[Unit]
+Description=CachyRecorder tray control
+After=plasma-plasmashell.service graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=%h/.local/share/cachyrecorder
+ExecStart=/usr/bin/python3 -m cachyrec.tray
+WorkingDirectory=%h/.local/share/cachyrecorder
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

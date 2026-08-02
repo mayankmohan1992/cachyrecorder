@@ -1,0 +1,19 @@
+[Unit]
+Description=CachyRecorder screen memory daemon
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=%h/.local/share/cachyrecorder
+ExecStart=/usr/bin/python3 -m cachyrec.daemon
+WorkingDirectory=%h/.local/share/cachyrecorder
+Restart=on-failure
+RestartSec=5
+Nice=10
+IOSchedulingClass=idle
+CPUWeight=30
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,18 @@
+# data & runtime artefacts — never commit recordings
+frames/
+index.db
+index.db-wal
+index.db-shm
+config.json
+state.json
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+*.swp
+.DS_Store
+/build/
+/dist/
