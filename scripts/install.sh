@@ -50,9 +50,8 @@ if [[ "${XDG_CURRENT_DESKTOP:-}" != *KDE* ]]; then
   echo "   both are KDE-specific. See README 'Porting' before filing a bug."
 fi
 
-"$REPO/scripts/deploy.sh" $([[ $START -eq 0 ]] && echo --no-restart)
-
 if (( START )); then
+  "$REPO/scripts/deploy.sh"
   echo
   echo "==> enabling at login"
   systemctl --user enable --now cachyrecorder.service cachyrecorder-tray.service
@@ -61,4 +60,6 @@ if (( START )); then
   echo "  cachyrec status          # what it is doing"
   echo "  cachyrec search <query>  # search your history"
   echo "  cachyrec gui             # open the search window"
+else
+  "$REPO/scripts/deploy.sh" --no-restart
 fi

@@ -6,5 +6,5 @@ Comment=Search everything you have seen on your screen
 Exec=cachyrec gui
 Icon=cachyrecorder
 Terminal=false
-Categories=Utility;Office;
+Categories=Utility;
 Keywords=recall;rewind;screen;history;search;ocr;
