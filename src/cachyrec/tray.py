@@ -1,13 +1,14 @@
 """System tray control for CachyRecorder."""
+import logging
+import os
 import subprocess
 import sys
 import time
-from datetime import datetime
+from pathlib import Path
 
 from PyQt6.QtCore import QTimer
-from PyQt6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
-from PyQt6.QtWidgets import (QApplication, QInputDialog, QMenu, QMessageBox,
-                             QSystemTrayIcon)
+from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtWidgets import QApplication, QInputDialog, QMenu, QSystemTrayIcon
 
 from . import config, store
 
@@ -27,29 +28,26 @@ def set_autostart(on: bool):
         systemctl(verb, unit)
 
 
+ICON_DIR = Path.home() / ".local/share/icons/hicolor/scalable/apps"
+
+
 def _icon(recording: bool) -> QIcon:
-    """Prefer a real theme icon: Plasma's StatusNotifier on Wayland does not
-    reliably register a tray item built from a bare in-memory QPixmap."""
-    names = (["media-record", "media-playback-start"] if recording
-             else ["media-playback-pause", "media-playback-stop"])
-    for n in names:
-        ic = QIcon.fromTheme(n)
+    """Shipped icon first, theme icon as fallback.
+
+    Plasma's StatusNotifier on Wayland refuses to register an item built from a
+    bare in-memory QPixmap, so both paths must yield a file- or theme-backed icon.
+    """
+    state = "recording" if recording else "paused"
+    for cand in (ICON_DIR / f"cachyrecorder-{state}.svg", ICON_DIR / "cachyrecorder.svg"):
+        if cand.exists():
+            ic = QIcon(str(cand))
+            if not ic.isNull():
+                return ic
+    for name in (["media-record"] if recording else ["media-playback-pause"]):
+        ic = QIcon.fromTheme(name)
         if not ic.isNull():
             return ic
-    # fallback: painted icon
-    pm = QPixmap(64, 64)
-    pm.fill(QColor(0, 0, 0, 0))
-    p = QPainter(pm)
-    p.setRenderHint(QPainter.RenderHint.Antialiasing)
-    p.setBrush(QColor("#e5484d") if recording else QColor("#8b8d98"))
-    p.setPen(QColor("#ffffff"))
-    p.drawEllipse(10, 10, 44, 44)
-    if not recording:
-        p.setBrush(QColor("#ffffff"))
-        p.drawRect(24, 22, 6, 20)
-        p.drawRect(34, 22, 6, 20)
-    p.end()
-    return QIcon(pm)
+    return QIcon.fromTheme("applications-system")
 
 
 def systemctl(*args):
@@ -218,8 +216,6 @@ class Tray(QSystemTrayIcon):
 
 
 def main():
-    import logging
-    import os
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     log = logging.getLogger("tray")
 

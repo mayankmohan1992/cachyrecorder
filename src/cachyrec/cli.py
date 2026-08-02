@@ -10,7 +10,8 @@ def cmd_status(_):
     conn = store.connect()
     s = store.stats(conn)
     cfg = config.load()
-    first = datetime.fromtimestamp(s["first_ts"]).strftime("%Y-%m-%d %H:%M") if s["first_ts"] else "—"
+    first = (datetime.fromtimestamp(s["first_ts"]).strftime("%Y-%m-%d %H:%M")
+             if s["first_ts"] else "—")
     print(f"paused        : {cfg['paused']}")
     print(f"interval      : {cfg['interval_sec']}s")
     print(f"retention     : {cfg['retention_days']} days")

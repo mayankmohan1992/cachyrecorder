@@ -1,4 +1,5 @@
 """SQLite FTS5-backed frame index."""
+import contextlib
 import sqlite3
 import time
 from pathlib import Path
@@ -113,17 +114,16 @@ def stats(conn):
     total = conn.execute("SELECT COUNT(*) c FROM frames").fetchone()["c"]
     done = conn.execute("SELECT COUNT(*) c FROM frames WHERE ocr_done=1").fetchone()["c"]
     first = conn.execute("SELECT MIN(ts) t FROM frames").fetchone()["t"]
-    size = sum(p.stat().st_size for p in config.FRAME_DIR.rglob("*.webp")) if config.FRAME_DIR.exists() else 0
+    size = (sum(p.stat().st_size for p in config.FRAME_DIR.rglob("*.webp"))
+            if config.FRAME_DIR.exists() else 0)
     return {"total": total, "ocr_done": done, "first_ts": first, "bytes": size}
 
 
 def purge_older_than(conn, cutoff_ts):
     rows = conn.execute("SELECT id,path FROM frames WHERE ts < ?", (cutoff_ts,)).fetchall()
     for r in rows:
-        try:
+        with contextlib.suppress(OSError):
             Path(r["path"]).unlink(missing_ok=True)
-        except OSError:
-            pass
         conn.execute("DELETE FROM frames_fts WHERE rowid IN "
                      "(SELECT rowid FROM fts_map WHERE frame_id=?)", (r["id"],))
         conn.execute("DELETE FROM fts_map WHERE frame_id=?", (r["id"],))

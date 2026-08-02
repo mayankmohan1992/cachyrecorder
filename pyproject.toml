@@ -1,0 +1,19 @@
+[project]
+name = "cachyrecorder"
+version = "0.1.0"
+description = "Screen memory recorder and OCR search for KDE Plasma on Wayland"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "FURB"]
+# Deliberate choices, not oversights:
+#   BLE001/S110 — capture and D-Bus helpers must never crash the daemon; a failed
+#                 screenshot is a skipped tick, not a fatal error.
+#   PLW1510     — returncode is inspected explicitly where it matters.
+#   DTZ         — frame timestamps are intentionally local wall-clock: users search
+#                 "what was I doing at 3pm", not UTC.
+ignore = ["B008"]

@@ -6,8 +6,11 @@ from pathlib import Path
 
 from PIL import Image
 
-_KWIN_SCRIPT = 'console.info("CACHYREC_TITLE:" + (workspace.activeWindow ? ' \
-               '(workspace.activeWindow.resourceClass + "\\u241F" + workspace.activeWindow.caption) : "\\u241F"));'
+_KWIN_SCRIPT = (
+    'console.info("CACHYREC_TITLE:" + (workspace.activeWindow ? '
+    '(workspace.activeWindow.resourceClass + "\\u241F" + '
+    'workspace.activeWindow.caption) : "\\u241F"));'
+)
 
 
 def grab_screen(dest: Path) -> bool:
@@ -77,7 +80,7 @@ def hamming(a: str, b: str) -> int:
     if not a or not b:
         return 999
     try:
-        return bin(int(a, 16) ^ int(b, 16)).count("1")
+        return (int(a, 16) ^ int(b, 16)).bit_count()
     except ValueError:
         return 999
 
@@ -94,17 +97,20 @@ def is_locked() -> bool:
 
 
 def idle_seconds() -> float:
-    """Idle time via KDE's IdleTime service; 0.0 if unavailable."""
+    """Seconds since last input, or 0.0 when the session exposes no idle API.
+
+    KDE Wayland implements neither ScreenSaver.GetSessionIdleTime nor a KWin
+    IdleTime object, so this returns 0.0 there and the daemon relies on dhash
+    dedup instead: a genuinely idle screen produces identical frames, which are
+    dropped before they ever reach disk.
+    """
     try:
-        out = subprocess.run(
-            ["qdbus6", "org.kde.kglobalaccel", "/kglobalaccel"],
-            capture_output=True, text=True, timeout=3,
-        )
-        del out
         r = subprocess.run(
-            ["qdbus6", "org.freedesktop.ScreenSaver", "/ScreenSaver", "GetSessionIdleTime"],
-            capture_output=True, text=True, timeout=3,
-        ).stdout.strip()
-        return float(r) if r.replace(".", "").isdigit() else 0.0
+            ["qdbus6", "org.freedesktop.ScreenSaver", "/ScreenSaver",
+             "GetSessionIdleTime"], capture_output=True, text=True, timeout=3)
+        v = r.stdout.strip()
+        if r.returncode == 0 and v.isdigit():
+            return float(v)
     except Exception:
-        return 0.0
+        pass
+    return 0.0

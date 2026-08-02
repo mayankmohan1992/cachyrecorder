@@ -26,11 +26,12 @@ install -Dm644 "$REPO/systemd/cachyrecorder-tray.service" \
 install -Dm644 "$REPO/packaging/cachyrecorder.desktop" \
         "$HOME/.local/share/applications/cachyrecorder.desktop"
 
-if [[ -f "$REPO/assets/cachyrecorder.svg" ]]; then
-  install -Dm644 "$REPO/assets/cachyrecorder.svg" \
-    "$HOME/.local/share/icons/hicolor/scalable/apps/cachyrecorder.svg"
-  gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
-fi
+for svg in "$REPO"/assets/cachyrecorder*.svg; do
+  [[ -e "$svg" ]] || continue
+  install -Dm644 "$svg" \
+    "$HOME/.local/share/icons/hicolor/scalable/apps/$(basename "$svg")"
+done
+gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
 
 install -Dm755 "$REPO/scripts/cachyrec-launcher.sh" "$HOME/.local/bin/cachyrec"
 

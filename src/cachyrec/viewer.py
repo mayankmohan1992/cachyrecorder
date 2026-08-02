@@ -7,9 +7,21 @@ from pathlib import Path
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
-    QApplication, QComboBox, QHBoxLayout, QLabel, QLineEdit, QListWidget,
-    QListWidgetItem, QMainWindow, QPushButton, QScrollArea, QSlider,
-    QSplitter, QStatusBar, QVBoxLayout, QWidget,
+    QApplication,
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMainWindow,
+    QPushButton,
+    QScrollArea,
+    QSlider,
+    QSplitter,
+    QStatusBar,
+    QVBoxLayout,
+    QWidget,
 )
 
 from . import config, store
@@ -145,7 +157,8 @@ class Viewer(QMainWindow):
             t = datetime.fromtimestamp(r["ts"]).strftime("%b %d  %H:%M:%S")
             title = (r["title"] or "")[:60]
             item = QListWidgetItem(f"{t}   [{r['app'] or '?'}]\n{title}")
-            snip = r["snip"] if "snip" in r.keys() else None
+            # sqlite3.Row has no __contains__, so .keys() is required here
+            snip = r["snip"] if "snip" in r.keys() else None  # noqa: SIM118
             if snip:
                 item.setToolTip(snip)
             self.results.addItem(item)

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- CachyRecorder — tray, recording. Frame stack + magnifier, red dot live. -->
+  <rect x="26" y="34" width="54" height="34" rx="5" fill="#94a3b8"/>
+  <rect x="34" y="46" width="54" height="34" rx="5" fill="#cbd5e1"/>
+  <rect x="42" y="58" width="54" height="34" rx="5" fill="#f1f5f9"/>
+  <circle cx="60" cy="75" r="9" fill="none" stroke="#0f172a" stroke-width="4"/>
+  <line x1="67" y1="82" x2="78" y2="93" stroke="#0f172a" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="97" cy="31" r="16" fill="#ef4444"/>
+</svg>
