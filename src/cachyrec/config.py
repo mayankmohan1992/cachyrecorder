@@ -17,7 +17,7 @@ DEFAULTS = {
     "max_width": 1600,           # downscale stored frames
     "ocr_lang": "eng",
     "retention_days": 30,
-    "pause_on_idle_sec": 180,    # stop capturing after this much idle
+    "pause_on_idle_sec": 180,    # back off when screen is unchanged this long (0=off)
     "exclude_title_keywords": ["Bitwarden", "KeePass", "Private Browsing", "1Password"],
     "paused": False,
 }

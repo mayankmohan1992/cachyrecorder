@@ -78,7 +78,7 @@ cachyrec set exclude_title_keywords "Bitwarden,KeePass,Private Browsing"
 | `max_width` | 1600 | downscale width |
 | `ocr_lang` | eng | tesseract language (`pacman -S tesseract-data-hin` for more) |
 | `retention_days` | 30 | auto-delete older frames (0 = keep forever) |
-| `pause_on_idle_sec` | 180 | stop capturing after this much idle |
+| `pause_on_idle_sec` | 180 | back off to a slow poll once the screen has been unchanged this long (0 = off). KDE Wayland exposes no idle API, so this uses screen-change detection rather than input timing |
 | `exclude_title_keywords` | password managers | skip capture when window title/app matches |
 | `paused` | false | toggled by the tray |
 
