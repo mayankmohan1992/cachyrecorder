@@ -27,8 +27,8 @@ until you deploy it.
 ```bash
 git switch -c feat/my-thing
 # edit src/cachyrec/...
-scripts/deploy.sh          # push to runtime + restart services
-scripts/verify.sh          # must print "0 failed"
+make deploy                # push to runtime + restart services
+make check                 # lint + live gate; must print "0 failed"
 git commit -am "feat: my thing"
 git switch main && git merge --no-ff feat/my-thing
 ```
