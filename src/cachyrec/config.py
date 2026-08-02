@@ -1,4 +1,5 @@
 """Configuration for CachyRecorder."""
+import contextlib
 import json
 import os
 from pathlib import Path
@@ -25,10 +26,8 @@ DEFAULTS = {
 def load():
     cfg = dict(DEFAULTS)
     if CONFIG_PATH.exists():
-        try:
+        with contextlib.suppress(Exception):
             cfg.update(json.loads(CONFIG_PATH.read_text()))
-        except Exception:
-            pass
     return cfg
 
 
