@@ -77,6 +77,11 @@ def retention_worker():
 def capture_loop():
     conn = store.connect()
     last_hash = store.last_dhash(conn)
+    static_since = None      # when the screen last changed
+    idle_api = capture.idle_supported()
+    if not idle_api:
+        log.info("no session idle API; using screen-change detection for idle")
+
     while not _stop.is_set():
         cfg = config.load()
         interval = max(1, int(cfg.get("interval_sec", 5)))
@@ -87,10 +92,18 @@ def capture_loop():
         if capture.is_locked():
             _stop.wait(interval)
             continue
+
         idle_limit = int(cfg.get("pause_on_idle_sec", 0))
-        if idle_limit and capture.idle_seconds() > idle_limit:
+        # Real idle API when available, otherwise "screen unchanged for N sec".
+        if idle_limit and idle_api and capture.idle_seconds() > idle_limit:
             _stop.wait(interval)
             continue
+        if (idle_limit and not idle_api and static_since
+                and time.time() - static_since > idle_limit):
+            # Screen has been frozen past the threshold: back off to a slow
+            # poll so we still notice when the user returns.
+            _stop.wait(min(interval * 4, 30))
+            # fall through and capture one probe frame to detect a change
 
         started = time.time()
         ts = int(started)
@@ -112,9 +125,12 @@ def capture_loop():
             img.load()
             h = capture.dhash(img)
             if capture.hamming(h, last_hash) < int(cfg.get("similarity_skip", 4)):
+                if static_since is None:
+                    static_since = started
                 tmp.unlink(missing_ok=True)
                 _sleep_rest(started, interval)
                 continue
+            static_since = None
             last_hash = h
 
             maxw = int(cfg.get("max_width", 1600))

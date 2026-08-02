@@ -97,12 +97,12 @@ def is_locked() -> bool:
 
 
 def idle_seconds() -> float:
-    """Seconds since last input, or 0.0 when the session exposes no idle API.
+    """Seconds since last input, or -1.0 when the session exposes no idle API.
 
-    KDE Wayland implements neither ScreenSaver.GetSessionIdleTime nor a KWin
-    IdleTime object, so this returns 0.0 there and the daemon relies on dhash
-    dedup instead: a genuinely idle screen produces identical frames, which are
-    dropped before they ever reach disk.
+    KDE Wayland implements neither ScreenSaver.GetSessionIdleTime (returns
+    NotSupported) nor logind's IdleSinceHint (never populated), and there is no
+    ext-idle-notify client available. Callers must treat -1.0 as "unknown" and
+    fall back to screen-change detection rather than assuming zero idle time.
     """
     try:
         r = subprocess.run(
@@ -113,4 +113,9 @@ def idle_seconds() -> float:
             return float(v)
     except Exception:
         pass
-    return 0.0
+    return -1.0
+
+
+def idle_supported() -> bool:
+    """True when the session can report real idle time."""
+    return idle_seconds() >= 0.0
