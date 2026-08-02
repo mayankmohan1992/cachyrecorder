@@ -7,6 +7,7 @@ check: lint verify
 lint:
 > uvx ruff check src/cachyrec
 > bash -n scripts/*.sh
+> shellcheck -S warning scripts/*.sh
 > python3 -m compileall -q src/cachyrec
 
 deploy:
