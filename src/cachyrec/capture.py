@@ -40,7 +40,11 @@ def grab_screen(dest: Path) -> bool:
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
         r = subprocess.run(
-            ["spectacle", "-b", "-n", "-f", "-o", str(dest)],
+            # -i: don't register on org.kde.Spectacle (single-instance bus name),
+            # so launching Spectacle from the menu while we record doesn't make
+            # KDE think Spectacle is "already running" (which stops the menu
+            # from closing). See fix/spectacle-busy.
+            ["spectacle", "-b", "-n", "-i", "-f", "-o", str(dest)],
             capture_output=True, timeout=20,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError):
