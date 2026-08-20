@@ -78,7 +78,7 @@ def capture_loop():
     conn = store.connect()
     last_hash = store.last_dhash(conn)
     static_since = None      # when the screen last changed
-    idle_api = capture.idle_supported()
+    idle_api = capture.idle_seconds() >= 0
     if not idle_api:
         log.info("no session idle API; using screen-change detection for idle")
 

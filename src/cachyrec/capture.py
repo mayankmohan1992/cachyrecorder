@@ -2,6 +2,7 @@
 import subprocess
 import tempfile
 import time
+from datetime import datetime
 from pathlib import Path
 
 from PIL import Image
@@ -33,9 +34,6 @@ def active_window() -> tuple[str, str]:
         with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as fh:
             fh.write(_KWIN_SCRIPT)
             js = fh.name
-        since = subprocess.run(
-            ["date", "+%Y-%m-%d %H:%M:%S"], capture_output=True, text=True
-        ).stdout.strip()
         sid = subprocess.run(
             ["qdbus6", "org.kde.KWin", "/Scripting",
              "org.kde.kwin.Scripting.loadScript", js, name],
@@ -47,7 +45,9 @@ def active_window() -> tuple[str, str]:
                         "org.kde.kwin.Script.run"], capture_output=True, timeout=5)
         time.sleep(0.15)
         out = subprocess.run(
-            ["journalctl", "--user", "--since", since, "-o", "cat", "--no-pager"],
+            ["journalctl", "--user", "--since",
+             datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "-o", "cat",
+             "--no-pager"],
             capture_output=True, text=True, timeout=8,
         ).stdout
         subprocess.run(["qdbus6", "org.kde.KWin", "/Scripting",
@@ -97,12 +97,9 @@ def is_locked() -> bool:
 
 
 def idle_seconds() -> float:
-    """Seconds since last input, or -1.0 when the session exposes no idle API.
+    """Idle seconds, or -1.0 when the session reports none.
 
-    KDE Wayland implements neither ScreenSaver.GetSessionIdleTime (returns
-    NotSupported) nor logind's IdleSinceHint (never populated), and there is no
-    ext-idle-notify client available. Callers must treat -1.0 as "unknown" and
-    fall back to screen-change detection rather than assuming zero idle time.
+    Callers treat -1.0 as "unknown" and fall back to screen-change detection.
     """
     try:
         r = subprocess.run(
@@ -114,8 +111,3 @@ def idle_seconds() -> float:
     except Exception:
         pass
     return -1.0
-
-
-def idle_supported() -> bool:
-    """True when the session can report real idle time."""
-    return idle_seconds() >= 0.0
