@@ -114,6 +114,12 @@ def capture_loop():
             _sleep_rest(started, interval)
             continue
 
+        # don't fight the user's own Spectacle session for the D-Bus name
+        if capture.spectacle_running():
+            log.debug("spectacle busy (user capturing); skip tick")
+            _sleep_rest(started, interval)
+            continue
+
         tmp = Path(f"/tmp/cachyrec_{ts}.png")
         if not capture.grab_screen(tmp):
             log.warning("capture failed")
