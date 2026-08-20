@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS frames (
     title     TEXT,
     app       TEXT,
     dhash     TEXT,
+    bytes     INTEGER DEFAULT 0,
     ocr_done  INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_frames_ts ON frames(ts);
@@ -42,6 +43,20 @@ def connect(retries: int = 10):
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA synchronous=NORMAL")
             conn.executescript(SCHEMA)
+            # one-shot migration for DBs created before the bytes column.
+            # ALTER is non-idempotent; the duplicate error just means it's done.
+            # ponytail: runs on every connect; the WHERE bytes=0 SELECT is empty
+            # on a migrated DB, so steady-state cost is one no-op ALTER + one
+            # indexed probe. Move to a versioned schema if more migrations appear.
+            with contextlib.suppress(sqlite3.OperationalError):
+                conn.execute("ALTER TABLE frames ADD COLUMN bytes INTEGER DEFAULT 0")
+            conn.commit()
+            for rid, p in conn.execute(
+                    "SELECT id, path FROM frames WHERE bytes = 0 AND path != ''"):
+                with contextlib.suppress(OSError):
+                    conn.execute("UPDATE frames SET bytes = ? WHERE id = ?",
+                                 (Path(p).stat().st_size, rid))
+            conn.commit()
             return conn
         except sqlite3.OperationalError as e:
             last = e
@@ -52,8 +67,8 @@ def connect(retries: int = 10):
 
 def add_frame(conn, ts, path, title, app, dhash):
     cur = conn.execute(
-        "INSERT OR IGNORE INTO frames(ts,path,title,app,dhash) VALUES(?,?,?,?,?)",
-        (ts, str(path), title, app, dhash),
+        "INSERT OR IGNORE INTO frames(ts,path,title,app,dhash,bytes) VALUES(?,?,?,?,?,?)",
+        (ts, str(path), title, app, dhash, Path(path).stat().st_size if Path(path).exists() else 0),
     )
     conn.commit()
     return cur.lastrowid
@@ -114,9 +129,8 @@ def stats(conn):
     total = conn.execute("SELECT COUNT(*) c FROM frames").fetchone()["c"]
     done = conn.execute("SELECT COUNT(*) c FROM frames WHERE ocr_done=1").fetchone()["c"]
     first = conn.execute("SELECT MIN(ts) t FROM frames").fetchone()["t"]
-    size = (sum(p.stat().st_size for p in config.FRAME_DIR.rglob("*.webp"))
-            if config.FRAME_DIR.exists() else 0)
-    return {"total": total, "ocr_done": done, "first_ts": first, "bytes": size}
+    bytes_ = conn.execute("SELECT COALESCE(SUM(bytes),0) FROM frames").fetchone()[0]
+    return {"total": total, "ocr_done": done, "first_ts": first, "bytes": bytes_}
 
 
 def purge_older_than(conn, cutoff_ts):

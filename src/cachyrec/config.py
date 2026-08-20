@@ -8,7 +8,6 @@ DATA_DIR = Path(os.environ.get("CACHYREC_HOME", Path.home() / ".local/share/cach
 FRAME_DIR = DATA_DIR / "frames"
 DB_PATH = DATA_DIR / "index.db"
 CONFIG_PATH = DATA_DIR / "config.json"
-STATE_PATH = DATA_DIR / "state.json"
 
 DEFAULTS = {
     "interval_sec": 5,
