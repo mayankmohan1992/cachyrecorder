@@ -14,8 +14,29 @@ _KWIN_SCRIPT = (
 )
 
 
+def spectacle_running() -> bool:
+    """True when Spectacle already holds its D-Bus name (user has it open).
+
+    Spectacle is single-instance on org.kde.Spectacle. The recorder must not
+    fire `spectacle -b` while the user is using the GUI, or it steals the bus
+    name and the user's capture breaks.
+    """
+    try:
+        out = subprocess.run(["busctl", "--user", "list"],
+                             capture_output=True, text=True, timeout=3).stdout
+        for line in out.splitlines():
+            if line.startswith("org.kde.Spectacle"):
+                # column 2 is the owner; "-" means activatable but not running
+                return line.split()[1] != "-"
+    except Exception:
+        pass
+    return False
+
+
 def grab_screen(dest: Path) -> bool:
     """Silent full-screen capture via Spectacle (no portal prompt on KDE)."""
+    if spectacle_running():
+        return False
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
         r = subprocess.run(
