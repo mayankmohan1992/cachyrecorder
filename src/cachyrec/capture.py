@@ -1,6 +1,6 @@
 """Wayland/KDE-native screen capture + active window title via KWin scripting."""
+import os
 import subprocess
-import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
@@ -52,13 +52,20 @@ def grab_screen(dest: Path) -> bool:
     return dest.exists() and dest.stat().st_size > 0 and r.returncode == 0
 
 
+def _tmpdir() -> Path:
+    """Private 0700 scratch dir (tmpfs); never /tmp for screen-derived data."""
+    d = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "cachyrec"
+    d.mkdir(mode=0o700, parents=True, exist_ok=True)
+    return d
+
+
 def active_window() -> tuple[str, str]:
     """Return (app_class, window_title) using a transient KWin script."""
     name = f"cachyrec{int(time.time()*1000)%100000}"
     try:
-        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as fh:
-            fh.write(_KWIN_SCRIPT)
-            js = fh.name
+        js = _tmpdir() / f"{name}.js"
+        js.write_text(_KWIN_SCRIPT)
+        js = str(js)
         sid = subprocess.run(
             ["qdbus6", "org.kde.KWin", "/Scripting",
              "org.kde.kwin.Scripting.loadScript", js, name],

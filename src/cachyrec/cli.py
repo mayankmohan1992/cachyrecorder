@@ -18,6 +18,9 @@ def cmd_status(_):
     print(f"interval      : {cfg['interval_sec']}s")
     print(f"retention     : {cfg['retention_days']} days")
     print(f"frames        : {s['total']} ({s['ocr_done']} OCR-indexed)")
+    fails = store.kv_get(conn, "ocr_failures")
+    if fails:
+        print(f"ocr failures  : {fails} (since daemon start)")
     print(f"disk          : {s['bytes']/1024/1024:.1f} MB")
     print(f"oldest frame  : {first}")
     print(f"data dir      : {config.DATA_DIR}")
@@ -84,8 +87,10 @@ def cmd_purge(a):
         if resp.strip().lower() not in ("y", "yes"):
             print("aborted")
             return
-    store.purge_older_than(conn, cutoff)
+    n, orphans = store.purge_older_than(conn, cutoff)
     conn.commit()
+    for o in orphans:
+        print(f"WARNING: could not delete {o}")
     after = store.stats(conn)
     freed = (before["bytes"] - after["bytes"]) / 1e6
     print(f"removed {before['total'] - after['total']} frames, freed {freed:.1f} MB")

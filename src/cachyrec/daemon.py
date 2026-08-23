@@ -1,5 +1,6 @@
 """Recorder daemon: capture loop + OCR indexing worker."""
 import logging
+import os
 import queue
 import signal
 import subprocess
@@ -36,10 +37,17 @@ def ocr_image(path: Path, lang: str) -> str:
             ["tesseract", str(path), "stdout", "-l", lang, "--psm", "6"],
             capture_output=True, text=True, timeout=90,
         )
+        if r.returncode != 0:
+            raise RuntimeError(r.stderr.strip()[:120] or f"exit {r.returncode}")
         return " ".join(r.stdout.split())
     except Exception as e:
         log.warning("ocr failed %s: %s", path.name, e)
+        global _ocr_fail
+        _ocr_fail += 1
         return ""
+
+
+_ocr_fail = 0
 
 
 def ocr_worker():
@@ -56,6 +64,7 @@ def ocr_worker():
             p = Path(r["path"])
             text = ocr_image(p, cfg["ocr_lang"]) if p.exists() else ""
             store.save_ocr(conn, r["id"], text, r["title"], r["app"])
+        store.kv_set(conn, "ocr_failures", _ocr_fail)
         time.sleep(0.2)
     conn.close()
 
@@ -67,9 +76,11 @@ def retention_worker():
         days = int(cfg.get("retention_days", 30))
         if days > 0:
             cutoff = int((datetime.now() - timedelta(days=days)).timestamp())
-            n = store.purge_older_than(conn, cutoff)
+            n, orphans = store.purge_older_than(conn, cutoff)
             if n:
                 log.info("purged %d expired frames", n)
+            for o in orphans[:5]:
+                log.warning("purge could not delete %s", o)
         _stop.wait(3600)
     conn.close()
 
@@ -120,7 +131,10 @@ def capture_loop():
             _sleep_rest(started, interval)
             continue
 
-        tmp = Path(f"/tmp/cachyrec_{ts}.png")
+        # private 0700 tmpfs dir: screen content must not be world-readable
+        # in /tmp, and predictable /tmp names invite symlink attacks.
+        tmp = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "cachyrec" / f"{ts}.png"
+        tmp.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         if not capture.grab_screen(tmp):
             log.warning("capture failed")
             _sleep_rest(started, interval)

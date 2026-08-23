@@ -4,6 +4,7 @@
 set -uo pipefail
 
 RUNTIME="${CACHYREC_RUNTIME:-$HOME/.local/share/cachyrecorder}"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 QUIET="/dev/nu""ll"          # split literal: some tool parsers choke on the path
 PASS=0; FAIL=0
 ok(){ echo "  PASS  $1"; PASS=$((PASS+1)); }
@@ -21,12 +22,22 @@ py "import cachyrec.daemon, cachyrec.tray, cachyrec.viewer, cachyrec.cli" \
   && ok "all modules import" || no "all modules import"
 
 for u in cachyrecorder.service cachyrecorder-tray.service; do
+  [[ "$(systemctl --user is-enabled "$u")" == "enabled" ]] \
+    && ok "$u enabled (autostart)" || no "$u NOT enabled — recording dies on relogin"
   [[ "$(systemctl --user is-active "$u")" == "active" ]] \
     && ok "$u active" || no "$u active"
   n=$(systemctl --user show -p NRestarts --value "$u")
   [[ "${n:-0}" -le 2 ]] && ok "$u stable (restarts=$n)" \
     || no "$u restart-looping (restarts=$n)"
 done
+
+# deployed runtime must match the repo working tree (deploy-drift guard:
+# a stale deploy once shipped a crashing viewer while this gate was green)
+if diff -rq "$REPO/src/cachyrec" "$RUNTIME/cachyrec" --exclude=__pycache__ >"$QUIET" 2>&1; then
+  ok "runtime matches repo"
+else
+  no "runtime DRIFTED from repo — run scripts/deploy.sh"
+fi
 
 # capture must actually advance
 before=$(py "from cachyrec import store;print(store.stats(store.connect())['total'])" || echo 0)
@@ -44,8 +55,7 @@ else
     ok "capturing frames ($before -> $after)"
   elif py "import sys
 from cachyrec import capture
-from pathlib import Path
-p = Path('$(mktemp -u -t cachyrec-probe-XXXXXX.png)')
+p = capture._tmpdir() / 'probe.png'
 sys.exit(0 if capture.grab_screen(p) and p.stat().st_size > 0 else 1)"; then
     ok "capture path works, screen static (dedup active)"
   else
