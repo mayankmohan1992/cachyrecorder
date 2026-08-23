@@ -133,7 +133,11 @@ class Tray(QSystemTrayIcon):
 
         auto = QAction("Start recording at login", m)
         auto.setCheckable(True)
+        # blockSignals: if the is-enabled probe hiccups, setChecked(False)
+        # must not fire toggled and actually disable the units.
+        auto.blockSignals(True)
         auto.setChecked(service_enabled())
+        auto.blockSignals(False)
         auto.toggled.connect(self.toggle_autostart)
         m.addAction(auto)
 
