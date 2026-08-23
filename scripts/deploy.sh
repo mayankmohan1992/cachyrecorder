@@ -35,6 +35,12 @@ gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || tr
 
 install -Dm755 "$REPO/scripts/cachyrec-launcher.sh" "$HOME/.local/bin/cachyrec"
 
+# One-shot permission hardening: frames + OCR index hold everything on screen.
+chmod 700 "$RUNTIME"
+find "$RUNTIME/frames" -type d -exec chmod 700 {} + 2>/dev/null || true
+find "$RUNTIME/frames" -type f -exec chmod 600 {} + 2>/dev/null || true
+chmod 600 "$RUNTIME"/index.db* 2>/dev/null || true
+
 systemctl --user daemon-reload
 
 if [[ $RESTART -eq 1 ]]; then

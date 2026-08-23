@@ -27,6 +27,10 @@ CREATE TABLE IF NOT EXISTS fts_map (
     rowid INTEGER PRIMARY KEY,
     frame_id INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS kv (
+    k TEXT PRIMARY KEY,
+    v INTEGER NOT NULL
+);
 """
 
 
@@ -125,6 +129,17 @@ def range_frames(conn, start_ts, end_ts, limit=2000):
     ).fetchall()
 
 
+def kv_set(conn, k, v):
+    conn.execute("INSERT INTO kv(k,v) VALUES(?,?) "
+                 "ON CONFLICT(k) DO UPDATE SET v=excluded.v", (k, int(v)))
+    conn.commit()
+
+
+def kv_get(conn, k, default=0):
+    r = conn.execute("SELECT v FROM kv WHERE k=?", (k,)).fetchone()
+    return r["v"] if r else default
+
+
 def stats(conn):
     total = conn.execute("SELECT COUNT(*) c FROM frames").fetchone()["c"]
     done = conn.execute("SELECT COUNT(*) c FROM frames WHERE ocr_done=1").fetchone()["c"]
@@ -135,12 +150,16 @@ def stats(conn):
 
 def purge_older_than(conn, cutoff_ts):
     rows = conn.execute("SELECT id,path FROM frames WHERE ts < ?", (cutoff_ts,)).fetchall()
+    orphans = []
     for r in rows:
-        with contextlib.suppress(OSError):
+        try:
             Path(r["path"]).unlink(missing_ok=True)
+        except OSError:
+            # file survives on disk; keep it visible rather than leaking disk
+            orphans.append(r["path"])
         conn.execute("DELETE FROM frames_fts WHERE rowid IN "
                      "(SELECT rowid FROM fts_map WHERE frame_id=?)", (r["id"],))
         conn.execute("DELETE FROM fts_map WHERE frame_id=?", (r["id"],))
     conn.execute("DELETE FROM frames WHERE ts < ?", (cutoff_ts,))
     conn.commit()
-    return len(rows)
+    return len(rows), orphans
