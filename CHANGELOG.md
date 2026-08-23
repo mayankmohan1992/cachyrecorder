@@ -16,6 +16,11 @@
 
 ### Fixed
 
+- **Tray "Start recording at login" could silently disable itself.** The tray
+  menu rebuilds periodically; if the `systemctl is-enabled` probe hiccuped
+  during a rebuild, `setChecked(False)` fired the toggled handler and actually
+  disabled both units — recording then died at next login. The initial check
+  state no longer emits signals.
 - **The merge gate now catches the two failure modes that bit real users.**
   - Services silently becoming *disabled* killed recording until manually
     restarted; `verify.sh` now asserts both units are enabled, not just active.
